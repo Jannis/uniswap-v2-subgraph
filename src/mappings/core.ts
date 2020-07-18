@@ -1,5 +1,5 @@
 /* eslint-disable prefer-const */
-import { BigInt, BigDecimal, store } from '@graphprotocol/graph-ts'
+import { BigInt, BigDecimal, store, log } from '@graphprotocol/graph-ts'
 import {
   Pair,
   Token,
@@ -213,6 +213,26 @@ export function handleSync(event: Sync): void {
   let token1 = Token.load(pair.token1)
   let uniswap = UniswapFactory.load(FACTORY_ADDRESS)
 
+  log.warning('PAIR >> pair !== null: {}, token0 !== null: {}, token1 !== null: {}', [
+    pair !== null ? 'true' : 'false',
+    token0 !== null ? 'true' : 'false',
+    token1 !== null ? 'true' : 'false'
+  ])
+
+  log.warning(
+    'PAIR >> totalLiquidityETH: {}, pair: ({}, {}), pair.trackedReserveETH: {}, reserves: ({}, {}), decimals: ({}, {})',
+    [
+      uniswap.totalLiquidityETH.toString(),
+      token0.name,
+      token1.name,
+      pair.trackedReserveETH.toString(),
+      pair.reserve0.toString(),
+      pair.reserve1.toString(),
+      token0.decimals.toString(),
+      token1.decimals.toString()
+    ]
+  )
+
   // reset factory liquidity by subtracting onluy tarcked liquidity
   uniswap.totalLiquidityETH = uniswap.totalLiquidityETH.minus(pair.trackedReserveETH as BigDecimal)
 
@@ -223,11 +243,14 @@ export function handleSync(event: Sync): void {
   pair.save()
 
   // update ETH price now that reserves could have changed
+  log.warning('BUNDLE >> getEthPriceInUSD(): {}', [getEthPriceInUSD().toString()])
   let bundle = Bundle.load('1')
   bundle.ethPrice = getEthPriceInUSD()
   bundle.save()
 
+  log.warning('TOKEN0 >> derivedETH: {}', [findEthPerToken(token0 as Token, false).toString()])
   token0.derivedETH = findEthPerToken(token0 as Token, false)
+  log.warning('TOKEN1 >> derivedETH: {}', [findEthPerToken(token0 as Token, false).toString()])
   token1.derivedETH = findEthPerToken(token1 as Token, false)
   token0.save()
   token1.save()
@@ -241,6 +264,8 @@ export function handleSync(event: Sync): void {
   } else {
     trackedLiquidityETH = ZERO_BD
   }
+
+  log.warning('TRACKED LIQUIDITY ETH >> {}', [trackedLiquidityETH.toString()])
 
   // use derived amounts within pair
   pair.trackedReserveETH = trackedLiquidityETH
